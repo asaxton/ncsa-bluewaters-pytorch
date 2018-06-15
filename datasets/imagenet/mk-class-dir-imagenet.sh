@@ -15,7 +15,7 @@ rank = ${ALPS_APP_PE}
 local_dirs = np.array_split(np.array(dirs), w_size)[rank]
 print(' '.join(local_dirs))
 ")
-echo "Creaking unique directories ${ALPS_APP_PE}"
+echo "Creating unique directories ${ALPS_APP_PE}"
 for i in ${LOCAL_DIRS}
 do 
 CLASS_DIR=${DEST}/${i}

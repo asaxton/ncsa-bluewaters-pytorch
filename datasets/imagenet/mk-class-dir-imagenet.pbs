@@ -1,0 +1,34 @@
+#!/bin/bash
+#PBS -l nodes=2:ppn=32:xe
+#PBS -l walltime=00:20:00
+#PBS -N mk-class-dir-imagenet
+#PBS -e logs/log.${PBS_JOBNAME}_NN_${PBS_NUM_NODES}_${PBS_JOBID}.err
+#PBS -o logs/log.${PBS_JOBNAME}_NN_${PBS_NUM_NODES}_${PBS_JOBID}.out
+cd $PBS_O_WORKDIR
+mkdir -p logs
+
+MODE='validation'
+
+BASE_SRC='~/scratch/ImageNet/raw-imagenet'
+BASE_DEST='~/scratch/ImageNet/class-dir-imagenet'
+mkdir -p ${BASE_DEST}
+mkdir -p ${BASE_DEST}/${MODE}
+mkdir -p ${BASE_DEST}/${MODE}/Image
+echo "Starting mk synset dirs"
+aprun -n64 -N32 ./mk-class-dir-imagenet.sh \
+    ~/scratch/ImageNet/raw-imagenet/${MODE}/Images \
+    ~/scratch/ImageNet/class-dir-imagenet/${MODE}/Images \
+    ./${MODE}_files.txt \
+    build-dir #\
+#1> ${PBS_O_WORKDIR}/logs/apout.1build.${MODE}_${PBS_JOBNAME}_NN_${PBS_NUM_NODES}_${PBS_JOBID}.out \
+#2> ${PBS_O_WORKDIR}/logs/apout.1build.${MODE}_${PBS_JOBNAME}_NN_${PBS_NUM_NODES}_${PBS_JOBID}.err
+echo "Starting mv images"
+aprun -n64 -N32 ./mk-class-dir-imagenet.sh \
+    ~/scratch/ImageNet/raw-imagenet/${MODE}/Images \
+    ~/scratch/ImageNet/class-dir-imagenet/${MODE}/Images \
+    ./${MODE}_files.txt #\
+#1> ${PBS_O_WORKDIR}/logs/apout.2move.${MODE}_${PBS_JOBNAME}_NN_${PBS_NUM_NODES}_${PBS_JOBID}.out \
+#2> ${PBS_O_WORKDIR}/logs/apout.2move.${MODE}_${PBS_JOBNAME}_NN_${PBS_NUM_NODES}_${PBS_JOBID}.err
+
+
+

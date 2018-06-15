@@ -1,13 +1,14 @@
 #!/bin/bash
-##PBS -l nodes=256:ppn=16:xk
+#PBS -l nodes=32:ppn=16:xk
 #PBS -l walltime=10:00:00
-#PBS -N distributed_cnn_train
+#PBS -N hpml_distributed_cnn_train
 #PBS -e logs/log.${PBS_JOBNAME}_NN_${PBS_NUM_NODES}_${PBS_JOBID}.err
 #PBS -o logs/log.${PBS_JOBNAME}_NN_${PBS_NUM_NODES}_${PBS_JOBID}.out
 cd $PBS_O_WORKDIR
 mkdir -p logs
 module load bwpy
 module load bwpy-mpi
+module load tau
 source ~/.virtualenv/pytorch-spring2018/bin/activate
 #export MPICH_RMA_OVER_DMAPP=1
 #export MPICH_MAX_THREAD_SAFETY=multiple
@@ -18,23 +19,30 @@ LANG=C.UTF-8
 LC_ALL=C.UTF-8
 
 MODEL="inception_v3"
+#MODEL="resnet50"
 MBS=32
 
 echo "computing $MODEL"
 
-LEARNING_RATE=$(echo "0.001 * sqrt(${PBS_NUM_NODES})" | bc)
+LEARNING_RATE=$(echo "0.4 * sqrt(${PBS_NUM_NODES})" | bc)
 echo "Learning Rate: ${LEARNING_RATE}"
 echo "Mini Batch Size $MBS"
+
+CPT_DIR=~/scratch/pytorch_cpts/${PBS_JOBNAME}_NN_${PBS_NUM_NODES}_${PBS_JOBID}
+
+mkdir -p $CPT_DIR
+
+#aprun -cc none -n 1 -d 16 -N 1 -b -- python \
+#aprun -cc none -n $PBS_NUM_NODES -d 16 -N 1 -b -- tau_exec -T mpi -- python \
 aprun -cc none -n $PBS_NUM_NODES -d 16 -N 1 -b -- python \
     distributed_cnn_train.py \
-    ~/scratch/ImageNet2/class-dir-imagenet/train/Images/ \
+    ~/scratch/ImageNet/class-dir-imagenet/train/Images/ \
     --batch-size $MBS \
     --learning-rate $LEARNING_RATE \
-    --weight-decay 0.0001 \
+    --weight-decay 0.01 \
     --momentum 0.9 \
-    --num-epochs 100 \
-    --model $MODEL \
-    1> ${PBS_O_WORKDIR}/logs/apout.${PBS_JOBNAME}_NN_${PBS_NUM_NODES}_${PBS_JOBID}.out \
-    2> ${PBS_O_WORKDIR}/logs/apout.${PBS_JOBNAME}_NN_${PBS_NUM_NODES}_${PBS_JOBID}.err
-
-
+    --num-epochs 5 \
+    --checkpoint $CPT_DIR\
+    --model $MODEL #\
+#1> ${PBS_O_WORKDIR}/logs/apout.${PBS_JOBNAME}_NN_${PBS_NUM_NODES}_${PBS_JOBID}.out \
+#2> ${PBS_O_WORKDIR}/logs/apout.${PBS_JOBNAME}_NN_${PBS_NUM_NODES}_${PBS_JOBID}.err

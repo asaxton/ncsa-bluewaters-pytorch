@@ -28,10 +28,10 @@ echo "Mini Batch Size $MBS"
 
 #aprun -cc none -n 1 -d 16 -N 1 -b -- python \
 aprun -cc none -n $PBS_NUM_NODES -d 16 -N 1 -b -- python \
-    cnn_validation.py \
+    ../BWDistributedTrain/cnn_validation.py \
     ~/scratch/ImageNet/class-dir-imagenet/validation/Images/ \
     --batch-size $MBS \
     --checkpoint $CHPT \
-    --model $MODEL #\
-#1> ${PBS_O_WORKDIR}/logs/apout.${PBS_JOBNAME}_NN_${PBS_NUM_NODES}_${PBS_JOBID}.out \
-#2> ${PBS_O_WORKDIR}/logs/apout.${PBS_JOBNAME}_NN_${PBS_NUM_NODES}_${PBS_JOBID}.err
+    --model $MODEL \
+    1> ${PBS_O_WORKDIR}/logs/apout.${PBS_JOBNAME}_NN_${PBS_NUM_NODES}_${PBS_JOBID}.out \
+    2> ${PBS_O_WORKDIR}/logs/apout.${PBS_JOBNAME}_NN_${PBS_NUM_NODES}_${PBS_JOBID}.err

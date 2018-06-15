@@ -43,6 +43,6 @@ aprun -cc none -n $PBS_NUM_NODES -d 16 -N 1 -b -- python \
     --momentum 0.9 \
     --num-epochs 5 \
     --checkpoint $CPT_DIR\
-    --model $MODEL \
-    1> ${PBS_O_WORKDIR}/logs/apout.${PBS_JOBNAME}_NN_${PBS_NUM_NODES}_${PBS_JOBID}.out \
-    2> ${PBS_O_WORKDIR}/logs/apout.${PBS_JOBNAME}_NN_${PBS_NUM_NODES}_${PBS_JOBID}.err
+    --model $MODEL #\
+#1> ${PBS_O_WORKDIR}/logs/apout.${PBS_JOBNAME}_NN_${PBS_NUM_NODES}_${PBS_JOBID}.out \
+#2> ${PBS_O_WORKDIR}/logs/apout.${PBS_JOBNAME}_NN_${PBS_NUM_NODES}_${PBS_JOBID}.err

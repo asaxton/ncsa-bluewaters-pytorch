@@ -111,6 +111,7 @@ def distributed_cnn_train():
                                 weight_decay=args.weight_decay, 
                                 nesterov=True)
 
+    # decays per iteration
     scheduler = torch.optim.lr_scheduler.MultiStepLR(optimizer,
                                                      milestones=[100,200,400,1000],
                                                      gamma=.85)
@@ -140,9 +141,13 @@ def distributed_cnn_train():
 
     print("loading dataset done'{}'".format(args.data))
 
-    batch_time = AverageMeter()
-    data_time = AverageMeter()
-    total_time = AverageMeter()
+    load_time = AverageMeter()
+    param_pass_time = AverageMeter()
+    grad_pass_time = AverageMeter()
+    loss_calc_time = AverageMeter()
+    backward_time = AverageMeter()
+    model_adv_time = AverageMeter()
+
     losses = AverageMeter()
 
     # switch to train mode
@@ -154,17 +159,14 @@ def distributed_cnn_train():
     local_step = 0
     last_local_step = 0
     ALL_REDUCE_STEPS = args.local_step_count_freq
-    working_ab = 'b'
 
     print('Initialize Common Model')
     torch.cuda.synchronize()
     for param in model.parameters():
         if param is not None:
-            print('here')
             dist.all_reduce(param.data)
     for param in model.parameters():
         if param is not None:
-            print('here2')
             param /= float(num_workers)
 
     end = time.time()
@@ -175,6 +177,11 @@ def distributed_cnn_train():
         for i, (input, target) in enumerate(train_loader):
             # make model uniform accross all workers
             # common seed accross all woker
+            input_var = torch.autograd.Variable(input.cuda())
+            target_var = torch.autograd.Variable(target.cuda())
+
+            load_time.update(time.time() - end)
+
             torch.cuda.synchronize()
             if random.choice([0,1]) == 0:
                 for param in model.parameters():
@@ -182,40 +189,32 @@ def distributed_cnn_train():
             else:
                 for param in model.parameters():
                     dist.all_reduce(param.data, op=dist.reduce_op.MIN)
-            # measure data loading time
-            data_time.update(time.time() - end)
-            #print('step 1')
+            param_pass_time.update(time.time() - end)
 
-            #print('step 2')
-            input_var = torch.autograd.Variable(input.cuda())
-            #print('step 3')
-            target_var = torch.autograd.Variable(target.cuda())
             # compute output
             #print('step 4')
             if args.model == "inception_v3": 
                 torch.cuda.synchronize()
                 output, aux_output = model(input_var)
-                one_hot_tv = make_one_hot(target_var, 1000, label_smoothing=0.1)
+                one_hot_tv = make_one_hot(target_var, 1000, label_smoothing=0.0)
                 o_cpu = output.cpu()
                 loss_z = criterion(output, one_hot_tv)
                 loss_aux = criterion(aux_output, one_hot_tv)*0.3
                 loss = sum([loss_z, loss_aux])/(num_workers*args.batch_size)
             elif args.model == "resnet50" or args.model == "alexnet":
                 output = model(input_var)
-                loss = criterion(output, target_var)
+                one_hot_tv = make_one_hot(target_var, 1000, label_smoothing=0.5)
+                loss = criterion(output, one_hot_tv)/(num_workers*args.batch_size)
 
-            #print('step 6')
+            loss_calc_time.update(time.time() - end)
             losses.update(float(loss.data))
 
             # compute gradient and do SGD step
-            #print('step 7')
-            optimizer.zero_grad()
-            #print('step 8')
-            loss.backward()
-            #print('step 9')
 
-            #print('step 10')
-            #if local_step - last_local_step > ALL_REDUCE_STEPS:
+            optimizer.zero_grad()
+            loss.backward()
+
+            backward_time.update(time.time() - end)
 
             torch.cuda.synchronize()
             for param in model.parameters():
@@ -233,33 +232,47 @@ def distributed_cnn_train():
                 else:
                     dist.all_reduce(param.data, op=dist.reduce_op.MIN)
 
-
+            grad_pass_time.update(time.time() - end)
             optimizer.step()
             local_step += 1
-
+            model_adv_time.update(time.time() - end)
             # measure elapsed time
 
-            batch_time.update(time.time() - end)
             if local_step % args.print_freq == 0:
-                eps_val = float(args.batch_size)/batch_time.val
-                eps_avg = float(args.batch_size)/batch_time.avg
-                print('local_step {0} [{1}/{2}] '
-                      'local_epoch {3} '
-                      'avg Time {batch_time.avg:.3f}  '
-                      'avg Data {data_time.avg:.3f}  '
-                      'l avg example per sec {eps_avg:.3f} '
-                      'Loss Avg ({loss.avg:.3f}) Wall Time {wt}'.format(
-                        local_step, i+1, iterations_per_worker, epoch_num,
-                        batch_time=batch_time,
-                        data_time=data_time, 
-                        eps_val=eps_val,
+                eps_avg = float(args.batch_size)/model_adv_time.avg
+                print('local_step: {loc_step} [{iter}/{iter_p_w}] |'
+                      ' epoch: {e_n} |'
+                      ' load_time.avg: {load_time.avg:.3f}  |'
+                      ' param_pass_time.avg: {param_pass_time.avg:.3f} |'
+                      ' loss_calc_time.avg: {loss_calc_time.avg:.3f} |'
+                      ' backward_time.avg: {backward_time.avg:.3f} |'
+                      ' grad_pass_time.avg: {grad_pass_time.avg:.3f} |'
+                      ' model_adv_time.avg: (total_time) {model_adv_time.avg:.3f} |'
+                      ' avg example per sec: {eps_avg:.3f} |'
+                      ' Loss Avg: {loss.avg:.3f} |'
+                      ' Wall Time: {wt}'.format(
+                        loc_step=local_step,
+                        iter=i+1,
+                        iter_p_w=iterations_per_worker,
+                        e_n=epoch_num,
+                        load_time=load_time,
+                        param_pass_time=param_pass_time,
+                        grad_pass_time=grad_pass_time,
+                        loss_calc_time=loss_calc_time,
+                        backward_time=backward_time,
+                        model_adv_time=model_adv_time,
                         eps_avg=eps_avg,
                         loss=losses,
                         wt=time.ctime()))
                       
+                load_time.reset()
+                param_pass_time.reset()
+                grad_pass_time.reset()
+                loss_calc_time.reset()
+                backward_time.reset()
+                model_adv_time.reset()
                 losses.reset()
-                data_time.reset()
-                batch_time.reset()
+
                 gc.collect()
                 if rank == 0:
                     cp_f_d_name = os.path.join(args.checkpoint, 'epoch_{}_iter_{}'.format(epoch_num,

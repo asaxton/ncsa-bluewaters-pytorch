@@ -1,0 +1,83 @@
+#!/bin/bash
+
+#PBS -l nodes=2:ppn=32:xe
+#PBS -l walltime=08:00:00
+### set the job name
+#PBS -N ExtractListofImagesFromArchive
+#PBS -e logs/log.${PBS_JOBNAME}_${PBS_JOBID}.err
+#PBS -o logs/log.${PBS_JOBNAME}_${PBS_JOBID}.out
+
+cd $PBS_O_WORKDIR
+
+IMAGENET_IMAGE_TAR_ARCHIVE=/sw/unsupported/mldata/ImageNet/Images.tar
+
+set -e
+
+export LOG_DIR="logs/aprun.${PBS_JOBNAME}_${PBS_JOBID}"
+AGG_DIR="tmp_tar_list"
+IMG_ARCIVE_LIST='Image_Archive_List.txt'
+echo "Starting. You have set the following env var"
+
+echo "IMAGENET_IMAGE_TAR_ARCHIVE=$IMAGENET_IMAGE_TAR_ARCHIVE"
+
+module load bwpy/0.3.2
+
+# make sure you qsub this script from the same directoy
+# that build_imagenet_data.pbs is in.
+
+NUM_DIV=$((${PBS_NUM_NODES}*${PBS_NUM_PPN}))
+
+#rm -rf $LOG_DIR
+#rm -rf $AGG_DIR
+mkdir -p $LOG_DIR
+mkdir -p $AGG_DIR
+
+echo "Creating Image Synset list"
+#tar -tf ${IMAGENET_IMAGE_TAR_ARCHIVE} > tmp.txt
+IMG_SYNSET_LIST=$(cat tmp.txt)
+
+echo "Finished Creating Image Synset list"
+
+let TOT_SYNSET=${#IMG_SYNSET_LIST[@]}
+
+echo "Total Number of Synset $TOT_SYNSET"
+
+IMAGE_RUN_SCRIPT=list_images.sh
+
+cat <<EOF>$IMAGE_RUN_SCRIPT
+#!/bin/bash
+set -e
+index=\$ALPS_APP_PE
+echo "\$index: starting $IMAGE_RUN_SCRIPT"
+
+SYNSET_SLICE=\${*}
+
+echo "\$index: \${SYNSET_SLICE}"
+
+for syn in \$SYNSET_SLICE
+do
+
+echo "\${index}: starting tar -xf ${IMAGENET_IMAGE_TAR_ARCHIVE} --to-stdout \${syn} | tar -t | awk -v syn=\$syn '{  printf("%s %s\n", syn \$1); }' >> ${AGG_DIR}//\${index}_list.txt"
+tar -xf ${IMAGENET_IMAGE_TAR_ARCHIVE} --to-stdout \${syn} | tar -t | awk -v syn=\$syn '{  printf("%s %s\\n", syn, \$1); }' >> ${AGG_DIR}/\${index}_list.txt
+
+done
+
+EOF
+
+chmod u=rwx $IMAGE_RUN_SCRIPT
+
+echo "Doing aprun -b -n $((${PBS_NUM_NODES}*${PBS_NUM_PPN})) -N ${PBS_NUM_PPN} -- map.sh $IMAGE_RUN_SCRIPT $NUM_DIV [...]"
+
+aprun -b -n $((${PBS_NUM_NODES}*${PBS_NUM_PPN})) -N ${PBS_NUM_PPN} -- map.sh $IMAGE_RUN_SCRIPT $NUM_DIV ${IMG_SYNSET_LIST[@]}
+
+echo "Done reading archive. Now aggregating ro file ${IMG_ARCIVE_LIST}"
+
+#rm -f $IMG_ARCIVE_LIST
+cd ${AGG_DIR}
+cat $(ls) > $IMG_ARCIVE_LIST
+mv $IMG_ARCIVE_LIST ..
+cd ..
+echo "Done aggregating, cleaning up... Bye!"
+#exit 0
+#rm -rf ${AGG_DIR}
+#rm $IMG_RUN_SCRIPT

@@ -27,22 +27,24 @@ echo "computing $MODEL"
 LEARNING_RATE=$(echo "0.4 * sqrt(${PBS_NUM_NODES})" | bc)
 echo "Learning Rate: ${LEARNING_RATE}"
 echo "Mini Batch Size $MBS"
-
-CPT_DIR=~/scratch/pytorch_cpts/${PBS_JOBNAME}_NN_${PBS_NUM_NODES}_${PBS_JOBID}
-
+DATA_DIR="${HOME}/scratch/ImageNet/class-dir-imagenet/train/Images/"
+echo "training on data from ${DATA_DIR}"
+CPT_DIR=${HOME}/scratch/pytorch_cpts/${PBS_JOBNAME}_NN_${PBS_NUM_NODES}_${PBS_JOBID}
+echo "Checkpoints saved to ${CPT_DIR}"
 mkdir -p $CPT_DIR
 
 #aprun -cc none -n 1 -d 16 -N 1 -b -- python \
 #aprun -cc none -n $PBS_NUM_NODES -d 16 -N 1 -b -- tau_exec -T mpi -- python \
 aprun -cc none -n $PBS_NUM_NODES -d 16 -N 1 -b -- python \
     ../BWDistributedTrain/distributed_cnn_train.py \
-    ~/scratch/ImageNet/class-dir-imagenet/train/Images/ \
+    ${DATA_DIR} \
     --batch-size $MBS \
     --learning-rate $LEARNING_RATE \
-    --weight-decay 0.01 \
+    --weight-decay 0.1 \
     --momentum 0.9 \
-    --num-epochs 5 \
-    --checkpoint $CPT_DIR\
+    --num-epochs 100 \
+    --num-class 6 \
+    --checkpoint ${CPT_DIR} \
     --model $MODEL #\
-#1> ${PBS_O_WORKDIR}/logs/apout.${PBS_JOBNAME}_NN_${PBS_NUM_NODES}_${PBS_JOBID}.out \
-#2> ${PBS_O_WORKDIR}/logs/apout.${PBS_JOBNAME}_NN_${PBS_NUM_NODES}_${PBS_JOBID}.err
+#    1> ${PBS_O_WORKDIR}/logs/apout.${PBS_JOBNAME}_NN_${PBS_NUM_NODES}_${PBS_JOBID}.out \
+#    2> ${PBS_O_WORKDIR}/logs/apout.${PBS_JOBNAME}_NN_${PBS_NUM_NODES}_${PBS_JOBID}.err

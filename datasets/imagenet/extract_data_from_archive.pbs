@@ -48,7 +48,8 @@ IMAGENET_ANNOTATION_TAR_ARCHIVE=/sw/unsupported/mldata/ImageNet/Annotation.tar.g
 # choose which you are doing here
 MODE=train
 #MODE=validation
-FILE_LIST=$PBS_O_WORKDIR/${MODE}_files.txt
+#FILE_LIST=$PBS_O_WORKDIR/${MODE}_files.txt
+FILE_LIST=$PBS_O_WORKDIR/my_${MODE}_files.txt
 
 #FILE_LIST=$PBS_O_WORKDIR/training_files.txt
 #FILE_LIST=$PBS_O_WORKDIR/validation_files.txt
@@ -69,7 +70,7 @@ mkdir -p $DEST_DIR
 mkdir -p $IMG_DEST_DIR
 mkdir -p $ANN_DEST_DIR
 
-export LOG_DIR="logs/extract_data_from_archive_${PBS_JOBID}"
+export LOG_DIR="logs/aprun.${PBS_JOBNAME}_${PBS_JOBID}"
 
 echo "Starting. You have set the following env var"
 
@@ -85,7 +86,7 @@ module load bwpy/0.3.2
 # make sure you qsub this script from the same directoy
 # that build_imagenet_data.pbs is in.
 
-NUM_DIV=$(cat $PBS_NODEFILE | wc -l)
+NUM_DIV=$((${PBS_NUM_NODES}*${PBS_NUM_PPN}))
 
 rm -rf $LOG_DIR
 mkdir -p $LOG_DIR
@@ -99,8 +100,6 @@ echo "Finished Creating Image Synset list"
 let TOT_SYNSET=${#IMG_SYNSET_LIST[@]}
 
 echo "Total Number of Synset $TOT_SYNSET"
-
-echo "Converting Validation Data"
 
 IMAGE_RUN_SCRIPT=extract_images.sh
 
@@ -132,7 +131,7 @@ chmod u=rwx $IMAGE_RUN_SCRIPT
 
 echo "Doing aprun -b -n 32 -N 16 -- map.sh $IMAGE_RUN_SCRIPT $NUM_DIV [...]"
 
-aprun -b -n 64 -N 32 -- map.sh $IMAGE_RUN_SCRIPT $NUM_DIV ${IMG_SYNSET_LIST[@]}
+aprun -b -n $((${PBS_NUM_NODES}*${PBS_NUM_PPN})) -N ${PBS_NUM_PPN} -- map.sh $IMAGE_RUN_SCRIPT $NUM_DIV ${IMG_SYNSET_LIST[@]}
 
 echo "Done with images, Wrote data to ${IMG_DEST_DIR}"
 echo "Starting Annotation extraction"

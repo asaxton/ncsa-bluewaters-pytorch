@@ -71,6 +71,9 @@ parser.add_argument('--weight-decay', '--wd', default=1e-4, type=float,
 parser.add_argument('--num-epochs', '--sn', default=90, type=int,
                     metavar='NS', help='number of steps each worker should step through.')
 
+parser.add_argument('--num-class', default=1000, type=int,
+                    metavar='NS', help='number of classification')
+
 parser.add_argument('--checkpoint', type=str, default='model_state_dir', help='the directory where the model will be saved')
 
 args = parser.parse_args()
@@ -87,7 +90,7 @@ def distributed_cnn_train():
 
     print("creating model '{}'".format(args.model))
     if args.model == "inception_v3":
-        model = models.__dict__[args.model](transform_input=True)
+        model = models.__dict__[args.model](transform_input=True, num_classes=args.num_class)
         IMAGE_SIZE = 299
     elif args.model == "resnet50":
         model = models.__dict__[args.model]()
@@ -137,7 +140,7 @@ def distributed_cnn_train():
     print("loading dataset step 2'{}'".format(args.data))
     train_loader = torch.utils.data.DataLoader(
         train_dataset, batch_size=args.batch_size, shuffle=(train_sampler is None),
-        num_workers=0, pin_memory=False, sampler=train_sampler)
+        num_workers=0, pin_memory=False, sampler=train_sampler, drop_last=True)
 
     print("loading dataset done'{}'".format(args.data))
 
@@ -196,14 +199,14 @@ def distributed_cnn_train():
             if args.model == "inception_v3": 
                 torch.cuda.synchronize()
                 output, aux_output = model(input_var)
-                one_hot_tv = make_one_hot(target_var, 1000, label_smoothing=0.0)
+                one_hot_tv = make_one_hot(target_var, args.num_class, label_smoothing=0.0)
                 o_cpu = output.cpu()
                 loss_z = criterion(output, one_hot_tv)
                 loss_aux = criterion(aux_output, one_hot_tv)*0.3
                 loss = sum([loss_z, loss_aux])/(num_workers*args.batch_size)
             elif args.model == "resnet50" or args.model == "alexnet":
                 output = model(input_var)
-                one_hot_tv = make_one_hot(target_var, 1000, label_smoothing=0.5)
+                one_hot_tv = make_one_hot(target_var, args.num_class, label_smoothing=0.5)
                 loss = criterion(output, one_hot_tv)/(num_workers*args.batch_size)
 
             loss_calc_time.update(time.time() - end)

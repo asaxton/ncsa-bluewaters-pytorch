@@ -75,6 +75,9 @@ parser.add_argument('--weight-decay', '--wd', default=1e-4, type=float,
 parser.add_argument('--num-epochs', '--sn', default=90, type=int,
                     metavar='NS', help='number of steps each worker should step through.')
 
+parser.add_argument('--num-class', default=1000, type=int,
+                    metavar='NS', help='number of classification')
+
 parser.add_argument('--checkpoint', type=str, default='model_state.cpt', help='the file where the model will be saved')
 
 args = parser.parse_args()
@@ -91,7 +94,7 @@ def cnn_validation():
 
     print("creating model '{}'".format(args.model))
     if args.model == "inception_v3":
-        model = models.__dict__[args.model]()
+        model = models.__dict__[args.model](num_classes=args.num_class)
         IMAGE_SIZE = 299
     elif args.model == "resnet50":
         model = models.__dict__[args.model]()
@@ -131,6 +134,8 @@ def cnn_validation():
     data_time = AverageMeter()
     total_time = AverageMeter()
     losses = AverageMeter()
+    acc_total = AverageMeter()
+    acc_correct = AverageMeter()
 
     print('Pre-Step 1')
 
@@ -160,7 +165,7 @@ def cnn_validation():
         if args.model == "inception_v3": 
             torch.cuda.synchronize()
             output = model(input_var)
-            one_hot_tv = make_one_hot(target_var, 1000, label_smoothing=0.0)
+            one_hot_tv = make_one_hot(target_var, args.num_class, label_smoothing=0.0)
             o_cpu = output.cpu()
             loss_z = criterion(output, one_hot_tv)
             loss = loss_z/args.batch_size
@@ -175,6 +180,12 @@ def cnn_validation():
         #print('step 7')
         local_step += 1
 
+        # top 1 accuracy
+
+        _, predicted = torch.max(output.data, 1)
+        acc_correct.update((target_var.data == predicted).sum())
+        acc_total.update(target_var.size(0))
+
         # measure elapsed time
 
         batch_time.update(time.time() - end)
@@ -185,6 +196,7 @@ def cnn_validation():
                   'avg Time {batch_time.avg:.3f}  '
                   'avg Data {data_time.avg:.3f}  '
                   'l avg example per sec {eps_avg:.3f} '
+                  'Top 1 accuracy {acc} '
                   'Loss Avg ({loss.avg:.3f}) Wall Time {wt}'.format(
                     local_step, i+1, iterations_per_worker,
                     batch_time=batch_time,
@@ -192,6 +204,7 @@ def cnn_validation():
                     eps_val=eps_val,
                     eps_avg=eps_avg,
                     loss=losses,
+                    acc=acc_correct.sum / acc_total.sum,
                     wt=time.ctime()))
 
             losses.reset()

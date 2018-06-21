@@ -20,18 +20,23 @@ LC_ALL=C.UTF-8
 
 MODEL="inception_v3"
 MBS=16
-CHPT="~/scratch/pytorch_cpts/distributed_cnn_train_NN_8_8728297.bw/epoch_0_iter_80"
 
+CHPT="${HOME}/scratch/pytorch_cpts/STDIN_NN_2_8742333.bw/epoch_5_iter_450"
+/u/staff/saxton/scratch/
+DATA_DIR="${HOME}/scratch/ImageNet/class-dir-imagenet/validation/Images/"
+echo "training on data from ${DATA_DIR}"
 echo "Validating $MODEL"
 
 echo "Mini Batch Size $MBS"
 
-#aprun -cc none -n 1 -d 16 -N 1 -b -- python \
-aprun -cc none -n $PBS_NUM_NODES -d 16 -N 1 -b -- python \
+
+#aprun -cc none -n $PBS_NUM_NODES -d 16 -N 1 -b -- python \
+aprun -cc none -n 1 -d 16 -N 1 -b -- python \
     ../BWDistributedTrain/cnn_validation.py \
-    ~/scratch/ImageNet/class-dir-imagenet/validation/Images/ \
+    $DATA_DIR \
     --batch-size $MBS \
+    --num-class 6 \
     --checkpoint $CHPT \
-    --model $MODEL \
-    1> ${PBS_O_WORKDIR}/logs/apout.${PBS_JOBNAME}_NN_${PBS_NUM_NODES}_${PBS_JOBID}.out \
-    2> ${PBS_O_WORKDIR}/logs/apout.${PBS_JOBNAME}_NN_${PBS_NUM_NODES}_${PBS_JOBID}.err
+    --model $MODEL #\
+#    1> ${PBS_O_WORKDIR}/logs/apout.${PBS_JOBNAME}_NN_${PBS_NUM_NODES}_${PBS_JOBID}.out \
+#    2> ${PBS_O_WORKDIR}/logs/apout.${PBS_JOBNAME}_NN_${PBS_NUM_NODES}_${PBS_JOBID}.err

@@ -19,6 +19,7 @@ echo "Creating unique directories ${ALPS_APP_PE}"
 for i in ${LOCAL_DIRS}
 do 
 CLASS_DIR=${DEST}/${i}
+#echo "mkdir -p $CLASS_DIR"
 mkdir -p $CLASS_DIR
 done
 else
@@ -38,6 +39,7 @@ for i in ${LOCAL_FILES}
 do 
 DIR=$(echo ${i} | cut -d '-' -f 1)
 FILE=$(echo ${i} | cut -d '-' -f 2)
+#echo "Moving ${SOURCE}/${FILE} to ${DEST}/${DIR}/${FILE}"
 cp ${SOURCE}/${FILE} ${DEST}/${DIR}/${FILE}
 done
 fi

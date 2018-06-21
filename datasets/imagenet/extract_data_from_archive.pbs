@@ -49,7 +49,7 @@ IMAGENET_ANNOTATION_TAR_ARCHIVE=/sw/unsupported/mldata/ImageNet/Annotation.tar.g
 MODE=train
 #MODE=validation
 #FILE_LIST=$PBS_O_WORKDIR/${MODE}_files.txt
-FILE_LIST=$PBS_O_WORKDIR/my_${MODE}_files.txt
+FILE_LIST=$PBS_O_WORKDIR/${MODE}_files.txt
 
 #FILE_LIST=$PBS_O_WORKDIR/training_files.txt
 #FILE_LIST=$PBS_O_WORKDIR/validation_files.txt

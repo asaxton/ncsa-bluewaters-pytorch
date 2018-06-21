@@ -10,7 +10,7 @@ mkdir -p logs
 MODE='train'
 #MODE='validation'
 
-FILE_LIST=$PBS_O_WORKDIR/my_${MODE}_files.txt
+FILE_LIST=$PBS_O_WORKDIR/${MODE}_files.txt
 
 BASE_SRC="${HOME}/scratch/ImageNet/raw-imagenet"
 BASE_DEST="${HOME}/scratch/ImageNet/class-dir-imagenet"

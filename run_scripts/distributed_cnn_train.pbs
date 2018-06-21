@@ -4,6 +4,8 @@
 #PBS -N distributed_cnn_train
 #PBS -e logs/log.${PBS_JOBNAME}_NN_${PBS_NUM_NODES}_${PBS_JOBID}.err
 #PBS -o logs/log.${PBS_JOBNAME}_NN_${PBS_NUM_NODES}_${PBS_JOBID}.out
+#PBS -l flags=commtransparent
+#PBS -l advres=baui1
 cd $PBS_O_WORKDIR
 mkdir -p logs
 module load bwpy

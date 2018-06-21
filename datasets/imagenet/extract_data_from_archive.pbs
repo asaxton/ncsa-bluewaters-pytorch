@@ -94,7 +94,7 @@ mkdir -p $LOG_DIR
 echo "Creating Image Synset list"
 IMG_SYNSET_LIST=($(python -c "with open(\"${FILE_LIST}\") as f:
     for i in list(set([l.strip().split(' ')[1].split('_')[0] for l in f])):
-        print i"))
+        print(i)"))
 echo "Finished Creating Image Synset list"
 
 let TOT_SYNSET=${#IMG_SYNSET_LIST[@]}
@@ -118,7 +118,7 @@ do
 
 IMAGES_LIST=\$( python -c "with open(\"${FILE_LIST}\") as f:
     for i in [l.strip().split(\" \")[1] + '.JPEG' for l in f if \"\${syn}\" in l.split()[1] ]: 
-        print i" )
+        print(i)" )
 
 echo "\${index}: starting tar -xf ${IMAGENET_IMAGE_TAR_ARCHIVE} --to-stdout \${syn}.tar | tar -x -C ${IMG_DEST_DIR} \${IMAGES_LIST}"
 tar -xf ${IMAGENET_IMAGE_TAR_ARCHIVE} --to-stdout \${syn}.tar | tar -x -C ${IMG_DEST_DIR} \${IMAGES_LIST}
@@ -139,7 +139,7 @@ echo "Starting Annotation extraction"
 echo "Creating Annotation Synset list"
 ANN_SYNSET_LIST=($(python -c "with open(\"${FILE_LIST}\") as f:
     for i in list(set([l.strip().split(' ')[0] for l in f])):
-        print i"))
+        print(i)"))
 echo "Finished Creating Annotatios Synset list"
 
 ANN_RUN_SCRIPT=extract_Annotations.sh
@@ -159,7 +159,7 @@ do
 XML_LIST=\$( python -c "import os
 with open(\"${FILE_LIST}\") as f:
     for i in [os.path.join(\"Annotation\", *l.strip().split(\" \")) + '.xml' for l in f if \"\${syn}\" in l.split(\" \")[0]]:
-        print i" )
+        print(i)" )
 
 echo "\${index}: starting tar -xzf $IMAGENET_ANNOTATION_TAR_ARCHIVE --to-stdout \${syn}.tar.gz | tar -xz -C ${ANN_DEST_DIR} \${XML_LIST}"
 tar -xzf $IMAGENET_ANNOTATION_TAR_ARCHIVE --to-stdout \${syn}.tar.gz | tar -xz -C ${ANN_DEST_DIR} \${XML_LIST}
@@ -177,4 +177,4 @@ aprun -b -n 64 -N 32 -- map.sh $ANN_RUN_SCRIPT $NUM_DIV ${ANN_SYNSET_LIST[@]}
 echo "Done with annotations, Wrote data to ${ANN_DEST_DIR}"
 
 rm $ANN_RUN_SCRIPT
-rm $IMG_RUN_SCRIPT
+rm $IMAGE_RUN_SCRIPT

@@ -7,8 +7,8 @@
 cd $PBS_O_WORKDIR
 mkdir -p logs
 
-MODE='train'
-#MODE='validation'
+#MODE='train'
+MODE='validation'
 
 FILE_LIST=$PBS_O_WORKDIR/${MODE}_files.txt
 
@@ -17,7 +17,7 @@ BASE_DEST="${HOME}/scratch/ImageNet/class-dir-imagenet"
 
 mkdir -p ${BASE_DEST}
 mkdir -p ${BASE_DEST}/${MODE}
-mkdir -p ${BASE_DEST}/${MODE}/Image
+mkdir -p ${BASE_DEST}/${MODE}/Images
 echo "Starting mk synset dirs"
 aprun -n $((${PBS_NUM_NODES}*${PBS_NUM_PPN})) -N ${PBS_NUM_PPN} ./mk-class-dir-imagenet.sh \
     ${BASE_SRC}/${MODE}/Images \
